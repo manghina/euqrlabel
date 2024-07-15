@@ -15,8 +15,17 @@ use App\Models\ElabelRecyclingRules;
 use App\Models\ElabelResponsibleConsumption;
 use App\Models\ElabelSustainibilityAttachments;
 use App\Models\ElabelTypes;
+use App\Models\Types;
+use App\Models\Ingredient;
+use App\Models\ResponsibleConsumption;
+use App\Models\RecyclingRuleMaterials;
+use App\Models\RecyclingRuleContainers;
+use App\Models\ProductType;
+use App\Models\Packages;
+use App\Models\GeographicalIndication;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Http\Controllers\ImageUploadController;
 
 class ElabelController extends Controller
 {
@@ -64,7 +73,7 @@ class ElabelController extends Controller
     public function get($id)
     {
 
-        $records = Elabel::find($id)->with([
+        $records = Elabel::with([
             'category', 
             'geographicalIndication', 
             'ingredients', 
@@ -74,17 +83,66 @@ class ElabelController extends Controller
             'responsibleConsumption', 
             'sustainibilityAttachments'
             ]
-            )->get();
+            )->find($id);
+        
+        $sub = asset('storage/' . $records->sub_image);
+        $pre = asset('storage/' . $records->preview_image);
+        $records['sub'] = $sub;
+        $records['pre'] = $pre;
 
         return response()->json([
             'data' => $records
         ], 200);
     }
 
+    public function getById($id)
+    {
+
+        $records = Elabel::with([
+            'category', 
+            'geographicalIndication', 
+            'ingredients', 
+            'packages', 
+            'productTypes', 
+            'recyclingRules', 
+            'responsibleConsumption', 
+            'sustainibilityAttachments'
+            ]
+            )->find($id);
+
+        return $records;
+    }
+
+    public function getOptions() {
+        $ingredients = Ingredient::all();
+        $countries = GeographicalIndication::all();
+        $packages = Packages::all();
+        $productType = ProductType::all();
+        $recyclingRuleContainers = RecyclingRuleContainers::all();
+        $recyclingRuleMaterials = RecyclingRuleMaterials::all();
+        $responsibleConsumption = ResponsibleConsumption::all();
+        $types = Types::all();
+
+        return response()->json([
+            'data' => [
+                'countries' => $countries,
+                'ingredients' => $ingredients,
+                'packages' => $packages,
+                'productType' => $productType,
+                'containers' => $recyclingRuleContainers,
+                'materials' => $recyclingRuleMaterials,
+                'consumption' => $responsibleConsumption,
+                'types' => $types
+            ]
+        ], 200);
+    }
+
     public function save(Request $request) {
-        $data = $request->only(['id','public_id','product_name','sku','type','status','qr','country','product_type','vintage_year','product_varieties','alcohol_content_percentage','net_content','description','alcohol_by_volume','residual_sugar','organic_acid','glycerol','symplify_display_of_negligible_values','sustainibility_bio','sustainibility_message']);
-        
-        $validator = Validator::make($data, [
+        $data = $request->only(['id','public_id','product_name','sku','type','status','qr','country','product_type','vintage_year','product_varieties','alcohol_content_percentage','net_content','description','alcohol_by_volume','residual_sugar','organic_acid','glycerol','symplify_display_of_negligible_values','sustainibility_bio','sustainibility_message', 'energy_kj', 'energy_kcal', 'fat', 'fat_sat', 'carb', 'carb_sugar', 'protein', 'salt', 'drive', 'pregnant', 'preview_image', 'sub_image', 'age'
+    ]);
+   
+    
+    $validator = Validator::make($data, [
             'id' => [
                 'integer', 'nullable'
             ],
@@ -111,7 +169,7 @@ class ElabelController extends Controller
                 'string', 'nullable'
             ],
             'vintage_year' => [
-                'integer', 'nullable'
+                'string', 'nullable'
             ],
             'product_varieties' => [
                 'string', 'nullable'
@@ -156,59 +214,97 @@ class ElabelController extends Controller
         if(!isset($data['user_id']))
             $data['user_id'] = 1;
         if(isset($data['id'])) {
+            file_put_contents("maporcodio", "diocane");
             $record = Elabel::find($data['id']);
             $record->fill($data);
         } else {
+            file_put_contents("maporcodio", print_r($data, true));
             $record = new Elabel($data);
         }
         $record->qr = Str::uuid();
         $record->save();
 
-        $options = $request->only(['category', 'geographical_indication', 'ingredients', 'packages', 'product_types', 'recycling_rules', 'responsible_consumption', 'sustainibility_attachments', 'types', 'recycling_rules']);
-        $this->ifPresentInsertOrUpdate($options, 'category', ElabelCategory::class, $record->id);
-        $this->ifPresentInsertOrUpdate($options, 'geographical_indication', ElabelGeographicalIndication::class, $record->id);
+        $options = $request->only(['ingredients', 'geographical_indication', 'ingredients', 'packages', 'product_types', 'recycling_rules', 'responsible_consumption', 'sustainibility_attachments', 'types', 'recycling_rules']);
+
+
+        $tmp = ElabelGeographicalIndication::where('elabel_id', $record->id)->get();
+        foreach($tmp as $t) {
+            $t->delete();
+        }
+        $model = new ElabelGeographicalIndication();
+        $model->geographical_indication_id = $request->get('geographical_indication');
+        $model->elabel_id = $record->id;
+        $model->save();
+
+        $model = new ElabelIngredients();
+        $tmp = $model::where('elabel_id', $record->id)->get();
+        foreach($tmp as $t) {
+            $t->delete();
+        }
         $this->ifPresentInsertOrUpdate($options, 'ingredients', ElabelIngredients::class, $record->id);
-        $this->ifPresentInsertOrUpdate($options, 'packages', ElabelPackages::class, $record->id);
+        
+        $tmp = ElabelPackages::where('elabel_id', $record->id)->get();
+        foreach($tmp as $t) {
+            $t->delete();
+        }
+        $model = new ElabelPackages();
+        $model->package_id = $request->get('packages');
+        $model->elabel_id = $record->id;
+        $model->save();        
         
         $this->ifPresentInsertOrUpdate($options, 'product_types', ElabelProductTypes::class, $record->id);
+        
         $this->ifPresentInsertOrUpdate($options, 'responsible_consumption', ElabelResponsibleConsumption::class, $record->id);
+        
         $this->ifPresentInsertOrUpdate($options, 'sustainibility_attachments', ElabelSustainibilityAttachments::class, $record->id);
+        
         $this->ifPresentInsertOrUpdate($options, 'recycling_rules', ElabelRecyclingRules::class, $record->id);
 
-        $records = Elabel::with([
-            'category', 
-            'geographicalIndication', 
-            'ingredients', 
-            'packages', 
-            'productTypes', 
-            'recyclingRules', 
-            'responsibleConsumption', 
-            'sustainibilityAttachments', 
-            ]
-            )->get();
+        return $this->get($record->id);
+    }
 
-        return response()->json([
-            'data' => $records
-        ], 200);
+    public function create(Request $request) {
+        $data = $request->only(['public_id','product_name','sku']);
+        
+        $validator = Validator::make($data, [
+            'public_id' => [
+                'string',
+                'required'
+            ],
+            'product_name' => [
+                'string', 'nullable'
+            ],
+            'sku' => [
+                'string', 'nullable'
+            ]
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->getMessageBag()
+                    ->toArray()
+            ], 500);
+        }   
+        if(!isset($data['user_id']))
+            $data['user_id'] = 1;
+
+        $record = new Elabel($data);
+        $record->qr = Str::uuid();
+        $record->save();
+
+        return $record;
     }
     
 
     private function ifPresentInsertOrUpdate($data, $key, $model, $elabel_id) {
+        if(!isset($data[$key]))
+            return;
         $m = new $model;
         foreach($data[$key] as $record) {
-
-            $exist = isset($record['id']) ? $m->find($record['id']) : [];
-            
-            if(empty($exist)) {
-                $m->fill($record);
+            $r = $record[0];
+                $m->fill($r);
                 $m->elabel_id = $elabel_id;
                 $m->save();
-            } else {
-                $exist->fill($record);
-                $exist->save();     
-            }
         }
     }
-
 
 }

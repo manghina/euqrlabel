@@ -11,12 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('elabel_ingredients', function (Blueprint $table) {
+        Schema::create('ingredients', function (Blueprint $table) {
             $table->id();
-            $table->string('label');
             $table->string('group');
-            $table->string('value');
-            $table->decimal('elabel_id');
+            $table->string('label')->unique();
             $table->timestamps();
         });
     }
@@ -26,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('elabel_ingredients');
+        Schema::dropIfExists('ingredients');
     }
 };

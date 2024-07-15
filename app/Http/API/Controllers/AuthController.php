@@ -83,7 +83,7 @@ class AuthController extends Controller
                 'error' => 'Unauthorized'
             ], Response::HTTP_UNAUTHORIZED);
         }
-        return $this->respondWithToken($token);
+        return $this->respondWithToken($token, $user);
     }
 
     public function login(Request $request)

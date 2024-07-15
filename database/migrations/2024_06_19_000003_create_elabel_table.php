@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('elabel', function (Blueprint $table) {
             $table->id();
-            $table->string('public_id')->unique();
+            $table->string('public_id');
             $table->string('product_name')->nullable();
             $table->string('sku')->nullable();
             $table->string('status')->nullable();
@@ -32,6 +32,19 @@ return new class extends Migration
             $table->string('symplify_display_of_negligible_values')->nullable();
             $table->string('sustainibility_bio')->nullable();
             $table->string('sustainibility_message')->nullable();
+            $table->string('energy_kj')->nullable();
+            $table->string('energy_kcal')->nullable();
+            $table->string('fat')->nullable();
+            $table->string('fat_sat')->nullable();
+            $table->string('carb')->nullable();
+            $table->string('carb_sugar')->nullable();
+            $table->string('protein')->nullable();
+            $table->string('salt')->nullable();
+            $table->integer('drive')->nullable();
+            $table->integer('pregnant')->nullable();
+            $table->integer('age')->nullable();
+            $table->string('preview_image')->nullable();
+            $table->string('sub_image')->nullable();
             $table->string('user_id');
             $table->timestamps();
         });
